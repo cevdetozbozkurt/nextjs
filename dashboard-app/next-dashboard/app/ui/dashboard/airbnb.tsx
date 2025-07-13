@@ -1,156 +1,120 @@
-// import React, { useMemo, useState } from 'react';
-// import { Arc } from '@visx/shape';
-// import { Group } from '@visx/group';
-// import { GradientLightgreenGreen } from '@visx/gradient';
-// import { scaleBand, scaleRadial } from '@visx/scale';
-// import { Text } from '@visx/text';
-// import letterFrequency, { LetterFrequency } from '@visx/mock-data/lib/mocks/letterFrequency';
+'use client';
 
-// const data = letterFrequency;
+import React, { useState } from 'react';
+import { LinePath } from '@vx/shape';
+import { Drag } from '@vx/drag';
+import { curveBasis } from '@vx/curve';
+import { LinearGradient } from '@vx/gradient';
 
-// const getLetter = (d: LetterFrequency) => d.letter;
-// const getLetterFrequency = (d: LetterFrequency) => Number(d.frequency) * 100;
+type Line = { x: number; y: number }[];
+type Lines = Line[];
 
-// const frequencySort = (a: LetterFrequency, b: LetterFrequency) => b.frequency - a.frequency;
-// const alphabeticalSort = (a: LetterFrequency, b: LetterFrequency) =>
-//   a.letter.localeCompare(b.letter);
+export type DragIIProps = {
+  width: number;
+  height: number;
+  data?: Lines;
+};
 
-// const toRadians = (x: number) => (x * Math.PI) / 180;
-// const toDegrees = (x: number) => (x * 180) / Math.PI;
+export default function DragII({ data = [], width, height }: DragIIProps) {
+  const [lines, setLines] = useState<Lines>(data);
 
-// const barColor = '#93F9B9';
-// const margin = { top: 20, bottom: 20, left: 20, right: 20 };
+  return width < 10 ? null : (
+    <div className="DragII" style={{ touchAction: 'none' }}>
+      <svg width={width} height={height}>
+        <LinearGradient id="stroke" from="#ffffff" to="#000000" />
+        <rect fill="#4435ccff" width={width} height={height} rx={14} />
+        {lines.map((line, i) => (
+          <LinePath
+            key={`line-${i}`}
+            fill="transparent"
+            stroke="url(#stroke)"
+            strokeWidth={3}
+            data={line}
+            curve={curveBasis}
+            x={d => d.x}
+            y={d => d.y}
+          />
+        ))}
+        <Drag
+          width={width}
+          height={height}
+          resetOnStart
+          onDragStart={({ x = 0, y = 0 }) => {
+            // add the new line with the starting point
+            setLines(currLines => [...currLines, [{ x, y }]]);
+          }}
+          onDragMove={({ x = 0, y = 0, dx, dy }) => {
+            // add the new point to the current line
+            setLines(currLines => {
+              const nextLines = [...currLines];
+              const newPoint = { x: x + dx, y: y + dy };
+              const lastIndex = nextLines.length - 1;
+              nextLines[lastIndex] = [...(nextLines[lastIndex] || []), newPoint];
+              return nextLines;
+            });
+          }}
+        >
+          {({ x = 0, y = 0, dx, dy, isDragging, dragStart, dragEnd, dragMove }) => (
+            <g>
+              {/* decorate the currently drawing line */}
+              {isDragging && (
+                <g>
+                  <rect
+                    fill="white"
+                    width={8}
+                    height={8}
+                    x={x + dx - 4}
+                    y={y + dy - 4}
+                    pointerEvents="none"
+                  />
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={4}
+                    fill="transparent"
+                    stroke="white"
+                    pointerEvents="none"
+                  />
+                </g>
+              )}
+              {/* create the drawing area */}
+              <rect
+                fill="transparent"
+                width={width}
+                height={height}
+                onMouseDown={dragStart}
+                onMouseUp={dragEnd}
+                onMouseMove={dragMove}
+                onTouchStart={dragStart}
+                onTouchEnd={dragEnd}
+                onTouchMove={dragMove}
+              />
+            </g>
+          )}
+        </Drag>
+      </svg>
 
-// export type RadialBarsProps = {
-//   width: number;
-//   height: number;
-//   showControls?: boolean;
-// };
+      <style jsx>{`
+        .DragII {
+          display: flex;
+          flex-direction: column;
+          user-select: none;
+        }
 
-// export default function Example({ width, height, showControls = true }: RadialBarsProps) {
-//   const [rotation, setRotation] = useState(0);
-//   const [sortAlphabetically, setSortAlphabetically] = useState(true);
+        svg {
+          margin: 1rem 0;
+          cursor: crosshair;
+        }
 
-//   // bounds
-//   const xMax = width - margin.left - margin.right;
-//   const yMax = height - margin.top - margin.bottom;
-//   const radiusMax = Math.min(xMax, yMax) / 2;
-
-//   const innerRadius = radiusMax / 3;
-
-//   const xDomain = useMemo(
-//     () => data.sort(sortAlphabetically ? alphabeticalSort : frequencySort).map(getLetter),
-//     [sortAlphabetically],
-//   );
-
-//   const xScale = useMemo(
-//     () =>
-//       scaleBand<string>({
-//         range: [0 + rotation, 2 * Math.PI + rotation],
-//         domain: xDomain,
-//         padding: 0.2,
-//       }),
-//     [rotation, xDomain],
-//   );
-
-//   const yScale = useMemo(
-//     () =>
-//       scaleRadial<number>({
-//         range: [innerRadius, radiusMax],
-//         domain: [0, Math.max(...data.map(getLetterFrequency))],
-//       }),
-//     [innerRadius, radiusMax],
-//   );
-
-//   return width < 10 ? null : (
-//     <>
-//       <svg width={width} height={height}>
-//         <GradientLightgreenGreen id="radial-bars-green" />
-//         <rect width={width} height={height} fill="url(#radial-bars-green)" rx={14} />
-//         <Group top={yMax / 2 + margin.top} left={xMax / 2 + margin.left}>
-//           {data.map((d) => {
-//             const letter = getLetter(d);
-//             const startAngle = xScale(letter);
-//             const midAngle = startAngle + xScale.bandwidth() / 2;
-//             const endAngle = startAngle + xScale.bandwidth();
-
-//             const outerRadius = yScale(getLetterFrequency(d)) ?? 0;
-
-//             // convert polar coordinates to cartesian for drawing labels
-//             const textRadius = outerRadius + 4;
-//             const textX = textRadius * Math.cos(midAngle - Math.PI / 2);
-//             const textY = textRadius * Math.sin(midAngle - Math.PI / 2);
-
-//             return (
-//               <>
-//                 <Arc
-//                   key={`bar-${letter}`}
-//                   cornerRadius={4}
-//                   startAngle={startAngle}
-//                   endAngle={endAngle}
-//                   outerRadius={outerRadius}
-//                   innerRadius={innerRadius}
-//                   fill={barColor}
-//                 />
-//                 <Text
-//                   x={textX}
-//                   y={textY}
-//                   dominantBaseline="end"
-//                   textAnchor="middle"
-//                   fontSize={16}
-//                   fontWeight="bold"
-//                   fill={barColor}
-//                   angle={toDegrees(midAngle)}
-//                 >
-//                   {letter}
-//                 </Text>
-//               </>
-//             );
-//           })}
-//         </Group>
-//       </svg>
-//       {showControls && (
-//         <div className="controls">
-//           <label>
-//             <strong>Rotate</strong>&nbsp;
-//             <input
-//               type="range"
-//               min="0"
-//               max="360"
-//               value={toDegrees(rotation)}
-//               onChange={(e) => setRotation(toRadians(Number(e.target.value)))}
-//             />
-//             &nbsp;{toDegrees(rotation).toFixed(0)}°
-//           </label>
-//           <br />
-//           <div>
-//             <strong>Sort bars</strong>&nbsp;&nbsp;&nbsp;
-//             <label>
-//               <input
-//                 type="radio"
-//                 checked={sortAlphabetically}
-//                 onChange={(e) => setSortAlphabetically(true)}
-//               />
-//               Alphabetically&nbsp;&nbsp;&nbsp;
-//             </label>
-//             <label>
-//               <input
-//                 type="radio"
-//                 checked={!sortAlphabetically}
-//                 onChange={(e) => setSortAlphabetically(false)}
-//               />
-//               By frequency
-//             </label>
-//           </div>
-//           <br />
-//         </div>
-//       )}
-//       <style jsx>{`
-//         .controls {
-//           font-size: 14px;
-//           line-height: 1.5em;
-//         }
-//       `}</style>
-//     </>
-//   );
-// }
+        .deets {
+          display: flex;
+          flex-direction: row;
+          font-size: 12px;
+        }
+        .deets > div {
+          margin: 0.25rem;
+        }
+      `}</style>
+    </div>
+  );
+}

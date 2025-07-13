@@ -3,9 +3,13 @@ import RevenueChart from '@/app/ui/dashboard/revenue-chart';
 import LatestInvoices from '@/app/ui/dashboard/latest-invoices';
 import { lusitana } from '@/app/ui/fonts';
 import { fetchRevenue, fetchLatestInvoices, fetchCardData } from '@/app/lib/data';
+import DragII from '../ui/dashboard/airbnb';
+
+
 
 export default async function Page() {
   const revenue = await fetchRevenue();
+  
   const latestInvoices = await fetchLatestInvoices();
   const totalPaidInvoices = (await fetchCardData()).totalPaidInvoices
   const totalPendingInvoices = (await fetchCardData()).totalPendingInvoices;
@@ -28,6 +32,7 @@ export default async function Page() {
       </div>
       <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-4 lg:grid-cols-8">
         { <RevenueChart revenue={revenue}  /> }
+        { <DragII width={800} height={400} /> }
         { <LatestInvoices latestInvoices={latestInvoices} /> }
       </div>
     </main>
